@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Open-source, browser-based architecture comparison and pre-feasibility sizing for battery-backed power deployments.">
+  <title>PowerSizer | Rapid Power Architecture Screening</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="engine.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="site-head-inner">
+      <div class="brand"><span class="brand-bolt" aria-hidden="true">ϟ</span><span>PowerSizer</span><span class="version">v0.4</span></div>
+      <nav class="header-actions"><a href="#methodology">Methods & sources</a><a href="https://github.com/new" target="_blank" rel="noopener noreferrer" title="Create your own repository">GitHub-ready ↗</a></nav>
+    </div>
+    <div class="hero">
+      <div class="eyebrow">Rapid power infrastructure / concept engineering</div>
+      <h1>Compare three ways to power a critical site.</h1>
+      <p>Screen utility + storage, islanded gas + storage, and solar + gas + storage in minutes. See binding power and energy constraints, generator redundancy, and an illustrative 24-hour dispatch.</p>
+      <span class="scope"><span class="dot"></span>Transparent equations · Editable assumptions · No backend</span>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="scope-alert"><strong>Pre-feasibility, not detailed design.</strong> Deterministic sizing calculations with explicitly assumed input values. Results require vendor/site validation, electrical studies, code review, and a licensed engineer before procurement or energization. <a href="#methodology">See limitations.</a></div>
+
+    <div class="workspace">
+      <section class="panel input-panel" aria-labelledby="inputs-head">
+        <div class="panel-top"><div><span class="overline">01 / Inputs</span><h2 id="inputs-head">Design basis</h2></div><button type="button" class="subtle-btn" id="reset">Reset</button></div>
+        <div class="field"><label for="project">Project name</label><input id="project" type="text" maxlength="120" value="10 MW IT data center — concept"></div>
+        <div class="grid-two">
+          <div class="field"><label for="mode">Load definition</label><select id="mode"><option value="it">IT load → facility MW</option><option value="facility">Total facility peak MW</option></select></div>
+          <div class="field"><label for="loadMW">Design load <span class="unit">MW</span></label><input id="loadMW" type="number" min="0.01" max="10000" step="0.1" value="10"></div>
+          <div class="field"><label for="pue">Power usage effectiveness</label><input id="pue" type="number" min="1" max="3" step="0.01" value="1.3"><div class="hint">Used only when input is IT power</div></div>
+          <div class="field"><label for="criticalPct">Critical-load fraction <span class="unit">%</span></label><input id="criticalPct" type="number" min="1" max="100" step="1" value="100"><div class="hint">Battery bridge load; not islanded genset load</div></div>
+        </div>
+        <div class="field"><label for="loadProfile">Illustrative 24-hour demand profile</label><select id="loadProfile"><option value="flat">Flat / data center (100% peak all day)</option><option value="day">Day-heavy industrial (65% off peak)</option><option value="night">Night-heavy industrial (65% off peak)</option><option value="custom">Custom 24 hourly multipliers</option></select></div>
+        <div class="field" id="customWrap" hidden><label for="customProfile">24 hourly load multipliers (0–1)</label><textarea id="customProfile" rows="4" spellcheck="false">1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1</textarea><div class="hint">Hours 00:00–23:00, comma/space separated. Relative to specified design peak MW.</div></div>
+
+        <h3 class="fieldset-title">Utility + battery case</h3>
+        <div class="grid-two">
+          <div class="field"><label for="gridLimitMW">Available grid import <span class="unit">MW</span></label><input id="gridLimitMW" type="number" min="0" max="10000" step="0.1" value="15"></div>
+          <div class="field"><label for="gridBridgeHours">Grid outage bridge <span class="unit">hours</span></label><input id="gridBridgeHours" type="number" min="0.01" max="168" step="0.25" value="2"></div>
+          <div class="field"><label for="peakWindowHours">Peak-cap constraint duration <span class="unit">hours</span></label><input id="peakWindowHours" type="number" min="0.01" max="24" step="0.5" value="2"></div>
+        </div>
+        <p class="aside-note">Three noncoincident energy cases are sized and the largest governs: the outage bridge, the peak-cap window, and the repeating-day energy above the import cap taken from the load profile. If spare import cannot recharge the daily deficit, no battery size works and the case is flagged.</p>
+
+        <h3 class="fieldset-title">Islanded generation</h3>
+        <div class="grid-two">
+          <div class="field"><label for="genUnitMW">Gen set nameplate <span class="unit">MW/unit</span></label><input id="genUnitMW" type="number" min="0.01" max="200" step="0.1" value="2.5"></div>
+          <div class="field"><label for="genDeratePct">Net site derating <span class="unit">%</span></label><input id="genDeratePct" type="number" min="1" max="100" step="1" value="90"><div class="hint">Effective unit MW = nameplate × derating</div></div>
+          <div class="field"><label for="genReservePct">Firm capacity headroom <span class="unit">%</span></label><input id="genReservePct" type="number" min="0" max="100" step="1" value="15"></div>
+          <div class="field"><label for="genRedundancy">Spare units</label><select id="genRedundancy"><option value="0">N (no spare)</option><option value="1" selected>N+1 (one unit out)</option><option value="2">N+2 (two units out)</option><option value="3">N+3 (three units out)</option></select></div>
+          <div class="field"><label for="genMinLoadPct">Minimum online loading <span class="unit">%</span></label><input id="genMinLoadPct" type="number" min="0" max="100" step="1" value="30"></div>
+          <div class="field"><label for="genBridgeMinutes">Battery full-load bridge <span class="unit">min</span></label><input id="genBridgeMinutes" type="number" min="0.1" max="1440" step="5" value="15"></div>
+          <div class="field"><label for="gasHeatRateMMBtuPerMWh">Fuel heat rate <span class="unit">MMBtu/MWh</span></label><input id="gasHeatRateMMBtuPerMWh" type="number" min="0.01" max="30" step="0.1" value="9"><div class="hint">Illustrative constant rate, not a fuel curve</div></div>
+        </div>
+        <p class="aside-note">Generator capacity covers <em>full site peak</em>, including noncritical loads, with no firm solar credit. Generator sizing uses MW (not kVA); verify alternator, power factor, transients and duty rating separately.</p>
+
+        <h3 class="fieldset-title">Solar addition (hybrid case)</h3>
+        <div class="grid-two">
+          <div class="field"><label for="solarMWdc">PV DC array <span class="unit">MWdc</span></label><input id="solarMWdc" type="number" min="0" max="10000" step="0.5" value="6"></div>
+          <div class="field"><label for="solarYieldKWhPerKWDay">Daily AC yield <span class="unit">kWh/kWdc</span></label><input id="solarYieldKWhPerKWDay" type="number" min="0" max="12" step="0.25" value="4"></div>
+          <div class="field"><label for="pvDcAcRatio">PV DC/AC ratio</label><input id="pvDcAcRatio" type="number" min="0.5" max="3" step="0.1" value="1.2"></div>
+        </div>
+        <p class="aside-note">The solar curve is generic and not a meteorological forecast. Use a real site-specific hourly PV model before decisions. No PV contribution is credited to firm nighttime capacity.</p>
+
+        <h3 class="fieldset-title">BESS sizing and life assumptions</h3>
+        <div class="field"><label for="batteryPreset">Unit preset</label><select id="batteryPreset"><option value="mp2">Tesla Megapack — published 2 h configuration</option><option value="mp4">Tesla Megapack — published 4 h configuration</option><option value="custom">Custom unit</option></select><div class="hint">Illustrative public specs, not vendor approval for site or islanding duty</div></div>
+        <div class="grid-two">
+          <div class="field"><label for="unitPowerMW">Unit AC real power <span class="unit">MW</span></label><input id="unitPowerMW" type="number" min="0.001" max="100" step="0.001" value="1.927"></div>
+          <div class="field"><label for="unitEnergyMWh">Unit energy nameplate <span class="unit">MWh</span></label><input id="unitEnergyMWh" type="number" min="0.001" max="1000" step="0.001" value="3.854"></div>
+          <div class="field"><label for="bessHeadroomPct">AC power headroom <span class="unit">%</span></label><input id="bessHeadroomPct" type="number" min="0" max="100" step="1" value="10"></div>
+          <div class="field"><label for="bessPowerDeratePct">PCS power availability <span class="unit">%</span></label><input id="bessPowerDeratePct" type="number" min="1" max="100" step="1" value="100"></div>
+          <div class="field"><label for="socWindowPct">Usable SOC window <span class="unit">%</span></label><input id="socWindowPct" type="number" min="1" max="100" step="1" value="80"></div>
+          <div class="field"><label for="eolRetentionPct">EOL capacity retention <span class="unit">%</span></label><input id="eolRetentionPct" type="number" min="1" max="100" step="1" value="80"></div>
+          <div class="field"><label for="dischargeEffPct">Discharge efficiency <span class="unit">%</span></label><input id="dischargeEffPct" type="number" min="1" max="100" step="1" value="95"></div>
+          <div class="field"><label for="chargeEffPct">Charge efficiency <span class="unit">%</span></label><input id="chargeEffPct" type="number" min="1" max="100" step="1" value="95"></div>
+        </div>
+        <p class="aside-note">Battery nameplate energy is discounted by SOC window × one-way discharge efficiency × EOL retention for bridge calculations. Verify the unit energy definition and avoid double-counting vendor usable-energy guarantees.</p>
+        <div class="actions"><button type="button" class="btn" id="share">Copy design link</button><button type="button" class="btn ghost" id="importButton">Import JSON</button><input type="file" id="importFile" accept=".json,application/json" hidden></div>
+      </section>
+
+      <section class="output-column" aria-labelledby="results-head">
+        <div class="panel results-panel">
+          <div class="panel-top"><div><span class="overline">02 / Results</span><h2 id="results-head">Architecture comparison</h2></div><span class="live-pill"><span class="dot"></span>Recalculates live</span></div>
+          <div id="errorBox" class="error-box" role="alert" hidden></div>
+          <div id="headline" class="headline"></div>
+          <div id="comparison" class="comparison" aria-label="Architecture scenarios"></div>
+          <p class="caption">Click an architecture to inspect its engineering basis and indicative operating profile. Unit counts are rounded up independently to satisfy both AC power and usable energy constraints.</p>
+        </div>
+
+        <div class="panel detail-panel">
+          <div class="panel-top"><div><span class="overline">03 / Selected architecture</span><h2 id="selectedTitle">—</h2><p id="selectedSubtitle" class="subtitle">—</p></div><span id="selectedStatus" class="status">—</span></div>
+          <div id="metrics" class="metric-grid"></div>
+          <div class="detail-cols"><div><h3>Engineering checks</h3><div id="checks"></div></div><div><h3>Equipment and sizing basis</h3><dl id="breakdown" class="breakdown"></dl></div></div>
+          <h3 class="chart-title">Illustrative 24-hour real-power dispatch</h3>
+          <div id="chart" class="chart-wrap" role="img" aria-label="24 hour simulated power dispatch chart"></div>
+          <div class="legend"><span><i class="swatch load"></i>Load</span><span><i class="swatch gen"></i>Gas generation</span><span><i class="swatch solar"></i>PV used</span><span><i class="swatch grid"></i>Grid import</span><span><i class="swatch bess"></i>BESS discharge</span></div>
+          <p id="chartCaption" class="caption"></p>
+          <div id="flags" class="flags"></div>
+          <div class="actions"><button type="button" class="btn" id="json">Export design JSON</button><button type="button" class="btn ghost" id="csv">Comparison CSV</button><button type="button" class="btn ghost" id="hourly">Hourly dispatch CSV</button><button type="button" class="btn ghost" id="print">Print brief / PDF</button></div>
+          <p id="statusMessage" role="status" aria-live="polite" class="status-message"></p>
+        </div>
+      </section>
+    </div>
+
+    <section id="methodology" class="panel methods">
+      <span class="overline">04 / Methodology and limitations</span>
+      <h2>Know what the model does — and doesn't do.</h2>
+      <div class="methods-grid">
+        <div><h3>Battery energy</h3><div class="formula">E<sub>nameplate</sub> ≥ P<sub>critical</sub> × duration / (SOC window × η<sub>dis</sub> × EOL capacity retention)</div><p>AC power is sized independently using specified headroom and PCS site availability. Grid-constraint and outage support are separately sized, not assumed simultaneous. Under an import cap, required storage is the largest net drawdown of the repeating 24-hour profile (sequent-peak method), recharging only from spare import.</p></div>
+        <div><h3>Islanded firm generation</h3><div class="formula">N<sub>installed</sub> = ceil(P<sub>facility peak</sub> × (1 + reserve) / P<sub>unit, derated</sub>) + spare units</div><p>PV contributes zero firm capacity credit. In an N+1 case, the remaining generators must meet peak demand including the selected reserve.</p></div>
+        <div><h3>Solar and dispatch</h3><div class="formula">PV energy ≈ PV<sub>DC</sub> × user-entered AC daily specific yield</div><p>The model distributes that energy in a generic daylight curve, clips by inverter capacity and restricts PV usage to maintain online generator minimum loading. One-hour timesteps do not resolve fast transients.</p></div>
+        <div><h3>Consciously excluded</h3><p>Site weather and multi-day generation, transfer switching, fault current, power factor / kVA, harmonics, controls, protective relays, gas availability/pressure, actual fuel curves, start times, black start, grid forming, reliability probabilities, NFPA/NEC permitting, CAPEX and energy tariffs.</p></div>
+      </div>
+      <div class="sources"><strong>Primary references:</strong> <a href="https://www.tesla.com/megapack/design" target="_blank" rel="noopener noreferrer">Tesla Megapack public power/energy data ↗</a> <a href="https://www.nrel.gov/reopt/" target="_blank" rel="noopener noreferrer">NREL REopt methodology ↗</a> <a href="https://pvwatts.nrel.gov/" target="_blank" rel="noopener noreferrer">NREL PVWatts site-dependent solar resource ↗</a> <a href="https://www.cat.com/en_US/by-industry/electric-power/electric-power-resources/genset-sizing.html" target="_blank" rel="noopener noreferrer">Caterpillar generator sizing considerations ↗</a></div>
+      <p class="caption">Default 1.30 PUE, 15% reserve, 90% genset site derate, 30% generator minimum load, 4 kWh/kWdc/day solar yield, 9 MMBtu/MWh constant heat rate, 80% SOC window, 80% EOL retention, and 95% one-way efficiency are editable <strong>illustrative assumptions</strong>, not validated universal design defaults. This open-source tool is not affiliated with Tesla.</p>
+    </section>
+  </main>
+  <footer>PowerSizer v0.4 · Transparent preliminary power-system sizing · Calculations run in your browser; no design data is uploaded.</footer>
+</body>
+</html>
